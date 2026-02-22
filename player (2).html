@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="player">
+<title>player</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Syne+Mono&display=swap');
+
+:root {
+  --bg:#080808; --surf:#111; --surf2:#181818; --bdr:#242424;
+  --txt:#ccc; --dim:#444; --bright:#fff;
+  --acc:#c8ff00; --acc-dim:rgba(200,255,0,.10); --danger:#ff4455;
+  --safe-t:env(safe-area-inset-top,0px);
+  --safe-b:env(safe-area-inset-bottom,20px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
+html,body{height:100%;height:-webkit-fill-available;background:var(--bg);color:var(--txt);font-family:'Syne',sans-serif;overflow:hidden;touch-action:manipulation;}
+
+/* ── WELCOME ── */
+#welcome{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:40px;background:var(--bg);z-index:100;}
+.w-icon{font-size:5rem;opacity:.7;animation:spin 8s linear infinite;}
+@keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
+#welcome h1{font-size:clamp(3rem,12vw,5.5rem);font-weight:800;color:var(--bright);letter-spacing:-.05em;line-height:1;}
+#welcome h1 span{color:var(--acc);}
+#welcome p{font-size:.88rem;color:var(--dim);text-align:center;line-height:1.8;max-width:270px;}
+.wbtns{display:flex;flex-direction:column;gap:12px;width:100%;max-width:300px;}
+.bp,.bs,.ibt,.cb,.mbt,.qdel,.qi,.li{touch-action:manipulation;cursor:pointer;}
+.bp{background:var(--acc);color:#000;border:none;border-radius:14px;font-family:'Syne Mono',monospace;font-size:.9rem;padding:16px 24px;cursor:pointer;width:100%;transition:opacity .15s,transform .1s;}
+.bp:active{opacity:.8;transform:scale(.97);}
+.bs{background:var(--surf2);color:var(--txt);border:1px solid var(--bdr);border-radius:14px;font-family:'Syne Mono',monospace;font-size:.9rem;padding:16px 24px;cursor:pointer;width:100%;transition:background .15s,transform .1s;}
+.bs:active{background:#222;transform:scale(.97);}
+
+/* ── PLAYER ── */
+#player{position:fixed;inset:0;display:none;flex-direction:column;background:var(--bg);}
+#player.on{display:flex;}
+
+/* topbar */
+#topbar{display:flex;align-items:center;padding:calc(var(--safe-t) + 12px) 14px 12px;border-bottom:1px solid var(--bdr);flex-shrink:0;gap:10px;background:var(--bg);z-index:10;}
+#mode-pill{font-family:'Syne Mono',monospace;font-size:.62rem;color:var(--acc);background:var(--acc-dim);padding:5px 10px;border-radius:20px;flex-shrink:0;letter-spacing:.08em;white-space:nowrap;}
+#top-title{flex:1;font-size:.8rem;font-weight:600;color:var(--bright);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;}
+.ibt{background:var(--surf2);border:none;color:var(--txt);width:40px;height:40px;border-radius:10px;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .1s,transform .1s;}
+.ibt:active{background:#2a2a2a;transform:scale(.88);}
+.ibt.on{background:var(--acc-dim);color:var(--acc);}
+
+/* body */
+#body{flex:1;display:flex;overflow:hidden;position:relative;}
+
+/* center */
+#stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:16px;overflow:hidden;}
+
+#art{width:min(100%,300px);aspect-ratio:1;border-radius:20px;overflow:hidden;background:var(--surf);flex-shrink:0;box-shadow:0 20px 56px rgba(0,0,0,.7);position:relative;}
+@media(max-height:650px){#art{width:min(100%,180px);}}
+#art video{width:100%;height:100%;object-fit:cover;display:none;}
+#art-icon{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;}
+#art-glyph{font-size:4rem;opacity:.12;}
+#art-name{font-size:.7rem;color:var(--dim);font-family:'Syne Mono',monospace;text-align:center;padding:0 14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+
+#sinfo{text-align:center;width:min(100%,300px);}
+#stitle{font-size:1.1rem;font-weight:700;color:var(--bright);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.02em;}
+#ssub{font-size:.65rem;color:var(--dim);font-family:'Syne Mono',monospace;margin-top:4px;}
+
+/* progress */
+#prog-wrap{width:min(100%,300px);}
+#prog-bar-area{width:100%;height:28px;display:flex;align-items:center;cursor:pointer;position:relative;}
+#prog-track{width:100%;height:4px;background:var(--bdr);border-radius:2px;pointer-events:none;}
+#prog-fill{height:100%;background:var(--acc);border-radius:2px;width:0%;transition:width .2s linear;}
+#prog-times{display:flex;justify-content:space-between;font-family:'Syne Mono',monospace;font-size:.6rem;color:var(--dim);margin-top:2px;}
+
+/* controls */
+#ctrls{display:flex;align-items:center;justify-content:center;gap:10px;width:min(100%,300px);}
+.cb{background:var(--surf2);border:none;color:var(--txt);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s,transform .12s;flex-shrink:0;}
+.cb:active{transform:scale(.85);}
+.cb.sm{width:46px;height:46px;font-size:1rem;}
+.cb.lg{width:64px;height:64px;font-size:1.4rem;background:var(--bright);color:#000;border-radius:18px;box-shadow:0 6px 24px rgba(255,255,255,.18);}
+.cb.lg:active{background:#ddd;}
+.cb.active{color:var(--acc);background:var(--acc-dim);}
+
+/* vol */
+#volrow{display:flex;align-items:center;gap:8px;width:min(100%,300px);}
+#volrow span{font-size:.9rem;}
+#vol{flex:1;-webkit-appearance:none;appearance:none;height:4px;background:var(--bdr);border-radius:2px;outline:none;}
+#vol::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--bright);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5);}
+
+/* ── SIDEBAR ── */
+#sidebar{width:290px;max-width:88vw;background:var(--surf);border-left:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden;position:absolute;right:0;top:0;bottom:0;transform:translateX(110%);transition:transform .28s cubic-bezier(.4,0,.2,1);z-index:20;}
+#sidebar.open{transform:translateX(0);}
+@media(min-width:860px){
+  #sidebar{position:relative;transform:none!important;flex-shrink:0;}
+  #sid-toggle{display:none!important;}
+  #sid-bd{display:none!important;}
+}
+#sid-bd{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:19;display:none;backdrop-filter:blur(2px);}
+#sid-bd.on{display:block;}
+
+#sid-head{padding:12px 14px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+#sid-head span{font-family:'Syne Mono',monospace;font-size:.62rem;color:var(--dim);letter-spacing:.1em;}
+.addbtns{display:flex;gap:6px;}
+.mbt{background:var(--surf2);border:1px solid var(--bdr);color:var(--txt);font-family:'Syne Mono',monospace;font-size:.6rem;padding:6px 10px;border-radius:8px;cursor:pointer;white-space:nowrap;}
+.mbt:active{background:#2a2a2a;}
+
+#qlist{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.qi{display:flex;align-items:center;padding:11px 14px;border-bottom:1px solid var(--bdr);gap:8px;min-height:52px;}
+.qi.cur{background:var(--acc-dim);}
+.qi.cur .qn{color:var(--acc);}
+.qnum{font-family:'Syne Mono',monospace;font-size:.6rem;color:var(--dim);width:18px;flex-shrink:0;text-align:right;}
+.qdot{width:6px;height:6px;border-radius:50%;background:var(--acc);flex-shrink:0;animation:bl 1.4s ease-in-out infinite;}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.25}}
+.qn{flex:1;font-size:.76rem;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.qdel{background:none;border:none;color:var(--dim);font-size:.75rem;padding:6px 8px;cursor:pointer;border-radius:6px;flex-shrink:0;min-width:30px;min-height:36px;}
+.qdel:active{color:var(--danger);}
+
+/* ── LIBRARY ── */
+#library{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;z-index:200;}
+#library.on{display:flex;}
+#lib-top{display:flex;align-items:center;padding:calc(var(--safe-t)+12px) 14px 12px;border-bottom:1px solid var(--bdr);gap:12px;flex-shrink:0;}
+#lib-top h2{flex:1;font-size:1rem;font-weight:700;color:var(--bright);letter-spacing:-.02em;}
+#lib-pill{font-family:'Syne Mono',monospace;font-size:.6rem;color:var(--acc);background:var(--acc-dim);padding:4px 9px;border-radius:20px;white-space:nowrap;}
+#liblist{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--safe-b)+10px);}
+.li{display:flex;align-items:center;padding:13px 18px;border-bottom:1px solid var(--bdr);gap:12px;cursor:pointer;min-height:62px;}
+.li:active{background:var(--surf2);}
+.li.on{background:var(--acc-dim);}
+.li.on .lin{color:var(--acc);}
+.liico{font-size:1.2rem;flex-shrink:0;opacity:.5;}
+.liinfo{flex:1;overflow:hidden;}
+.lin{font-size:.86rem;font-weight:600;color:var(--bright);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.limt{font-size:.65rem;color:var(--dim);font-family:'Syne Mono',monospace;margin-top:2px;}
+.lbadge{font-family:'Syne Mono',monospace;font-size:.57rem;color:var(--acc);background:var(--acc-dim);padding:3px 7px;border-radius:10px;flex-shrink:0;}
+
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:60px 40px;color:var(--dim);text-align:center;font-size:.8rem;line-height:2;}
+.eico{font-size:2.5rem;opacity:.12;}
+
+::-webkit-scrollbar{width:2px;}
+::-webkit-scrollbar-thumb{background:var(--bdr);}
+</style>
+</head>
+<body>
+
+<!-- WELCOME -->
+<div id="welcome">
+  <div class="w-icon">🎵</div>
+  <h1>play<span>.</span></h1>
+  <p>add a folder or individual songs. works fully offline after first load.</p>
+  <div class="wbtns">
+    <button class="bp" id="w-folder">📁 &nbsp;open music folder</button>
+    <button class="bs" id="w-files">🎵 &nbsp;add individual files</button>
+  </div>
+</div>
+
+<!-- PLAYER -->
+<div id="player">
+  <div id="topbar">
+    <button class="ibt" id="lib-btn">☰</button>
+    <div id="top-title">nothing playing</div>
+    <div id="mode-pill">PLAYLIST</div>
+    <button class="ibt" id="sid-toggle">≡</button>
+  </div>
+
+  <div id="sid-bd"></div>
+
+  <div id="body">
+    <div id="stage">
+
+      <div id="art">
+        <video id="art-video" playsinline></video>
+        <div id="art-icon">
+          <div id="art-glyph">♪</div>
+          <div id="art-name">nothing playing</div>
+        </div>
+      </div>
+
+      <div id="sinfo">
+        <div id="stitle">—</div>
+        <div id="ssub">add songs to begin</div>
+      </div>
+
+      <div id="prog-wrap">
+        <div id="prog-bar-area">
+          <div id="prog-track"><div id="prog-fill"></div></div>
+        </div>
+        <div id="prog-times">
+          <span id="t-cur">0:00</span>
+          <span id="t-dur">0:00</span>
+        </div>
+      </div>
+
+      <div id="ctrls">
+        <button class="cb sm" id="loop-btn">⟳</button>
+        <button class="cb sm" id="prev-btn">⏮</button>
+        <button class="cb lg" id="play-btn">▶</button>
+        <button class="cb sm" id="next-btn">⏭</button>
+        <button class="cb sm" id="shuf-btn">⇄</button>
+      </div>
+
+      <div id="volrow">
+        <span>🔈</span>
+        <input type="range" id="vol" min="0" max="100" value="80">
+        <span>🔊</span>
+      </div>
+    </div>
+
+    <div id="sidebar">
+      <div id="sid-head">
+        <span id="q-label">QUEUE · 0</span>
+        <div class="addbtns">
+          <button class="mbt" id="sb-folder">+ folder</button>
+          <button class="mbt" id="sb-files">+ files</button>
+        </div>
+      </div>
+      <div id="qlist"></div>
+    </div>
+  </div>
+</div>
+
+<!-- LIBRARY -->
+<div id="library">
+  <div id="lib-top">
+    <button class="ibt" id="lib-close">✕</button>
+    <h2>all songs</h2>
+    <div id="lib-pill">SINGLE LOOP</div>
+  </div>
+  <div id="liblist"></div>
+</div>
+
+<!-- file inputs -->
+<input type="file" id="f-folder" webkitdirectory multiple accept="audio/*,video/mp4" style="display:none">
+<input type="file" id="f-files"  multiple accept="audio/*,video/mp4" style="display:none">
+<audio id="aud"></audio>
+
+<script>
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+const EXTS = ['mp3','wav','ogg','m4a','aac','flac','mp4'];
+let lib = [], queue = [], qPos = 0;
+let playing = false, paused = false, looping = false, shuffling = false;
+let singleMode = false, singleIdx = -1;
+let recycleCount = 0, seeking = false;
+let lastTap = 0, lastTapIdx = -1;
+
+const aud = document.getElementById('aud');
+const vid = document.getElementById('art-video');
+const get = id => document.getElementById(id);
+
+// ══════════════════════════════════════
+// TOUCH HANDLING
+// The key insight for iOS Safari:
+// - Use touchstart (not touchend/click) for instant response
+// - NEVER call preventDefault() on file input triggers
+// - Add cursor:pointer and a dummy onclick to make elements tappable
+// ══════════════════════════════════════
+function wire(id, fn) {
+  const el = get(id);
+  if (!el) return;
+  let active = false;
+  el.addEventListener('touchstart', e => {
+    e.preventDefault();
+    active = true;
+    fn();
+  }, { passive: false });
+  // click fallback for desktop / cases where touch doesn't fire
+  el.addEventListener('click', e => {
+    if (!active) fn();
+    active = false;
+  });
+}
+
+// File inputs need special treatment — iOS Safari won't open them
+// unless triggered from a direct touchend (not touchstart, not prevented)
+function wireFile(btnId, inputId) {
+  const btn = get(btnId);
+  const inp = get(inputId);
+  if (!btn || !inp) return;
+  let touched = false;
+  btn.addEventListener('touchend', e => {
+    e.preventDefault();
+    touched = true;
+    inp.click();
+    setTimeout(() => { touched = false; }, 600);
+  }, { passive: false });
+  btn.addEventListener('click', () => {
+    if (!touched) inp.click();
+  });
+}
+
+wireFile('w-folder',  'f-folder');
+wireFile('w-files',   'f-files');
+wireFile('sb-folder', 'f-folder');
+wireFile('sb-files',  'f-files');
+
+wire('lib-btn',    openLib);
+wire('lib-close',  closeLib);
+wire('sid-toggle', toggleSidebar);
+wire('sid-bd',     closeSidebar);
+wire('play-btn',   togglePlay);
+wire('prev-btn',   prevSong);
+wire('next-btn',   nextSong);
+wire('loop-btn',   toggleLoop);
+wire('shuf-btn',   toggleShuffle);
+
+get('f-folder').addEventListener('change', e => importFiles(e.target.files));
+get('f-files').addEventListener('change',  e => importFiles(e.target.files));
+get('vol').addEventListener('input', e => { aud.volume = e.target.value/100; vid.volume = e.target.value/100; });
+
+// ══════════════════════════════════════
+// IMPORT
+// ══════════════════════════════════════
+function importFiles(files) {
+  const existing = new Set(lib.map(s => s.name));
+  let added = 0;
+  Array.from(files)
+    .filter(f => EXTS.some(x => f.name.toLowerCase().endsWith('.'+x)))
+    .sort((a,b) => a.name.localeCompare(b.name))
+    .forEach(f => {
+      if (!existing.has(f.name)) {
+        lib.push({
+          name: f.name.replace(/\.(mp3|wav|ogg|m4a|aac|flac|mp4)$/i,''),
+          url: URL.createObjectURL(f),
+          isVid: f.name.toLowerCase().endsWith('.mp4')
+        });
+        added++;
+      }
+    });
+  if (!added) return;
+  if (queue.length === 0) {
+    queue = lib.map((_,i) => i);
+    qPos = 0;
+    showPlayer();
+  } else {
+    for (let i = lib.length - added; i < lib.length; i++) queue.push(i);
+  }
+  renderQueue();
+  renderLib();
+  closeSidebar();
+  // reset file inputs so same folder can be re-selected
+  get('f-folder').value = '';
+  get('f-files').value = '';
+}
+
+// ══════════════════════════════════════
+// SCREENS
+// ══════════════════════════════════════
+function showPlayer() {
+  get('welcome').style.display = 'none';
+  get('player').classList.add('on');
+}
+function openLib()  { renderLib(); get('library').classList.add('on'); }
+function closeLib() { get('library').classList.remove('on'); }
+function toggleSidebar() {
+  const open = get('sidebar').classList.toggle('open');
+  get('sid-bd').classList.toggle('on', open);
+}
+function closeSidebar() {
+  get('sidebar').classList.remove('open');
+  get('sid-bd').classList.remove('on');
+}
+
+// ══════════════════════════════════════
+// PLAYBACK
+// ══════════════════════════════════════
+function activeEl() {
+  const idx = singleMode ? singleIdx : queue[qPos];
+  return (lib[idx] && lib[idx].isVid) ? vid : aud;
+}
+
+function playSong(libIdx) {
+  if (libIdx < 0 || libIdx >= lib.length) return;
+  const s = lib[libIdx];
+
+  aud.pause();
+  vid.pause();
+  vid.removeAttribute('src');
+  aud.removeAttribute('src');
+
+  // native loop attribute handles single song looping on iOS Safari
+  aud.loop = singleMode;
+  vid.loop = singleMode;
+  // for playlist loop we use the ended event below
+
+  if (s.isVid) {
+    vid.src = s.url;
+    vid.volume = get('vol').value / 100;
+    vid.style.display = 'block';
+    get('art-icon').style.display = 'none';
+    vid.play().catch(()=>{});
+  } else {
+    aud.src = s.url;
+    aud.volume = get('vol').value / 100;
+    vid.style.display = 'none';
+    get('art-icon').style.display = 'flex';
+    aud.play().catch(()=>{});
+  }
+
+  playing = true;
+  paused = false;
+  get('play-btn').textContent = '⏸';
+  get('play-btn').style.background = '#fff';
+  get('top-title').textContent = s.name;
+  get('stitle').textContent    = s.name;
+  get('art-name').textContent  = s.name;
+  get('art-glyph').textContent = s.isVid ? '🎬' : '♪';
+
+  if (singleMode) {
+    singleIdx = libIdx;
+    get('ssub').textContent      = 'single · looping';
+    get('mode-pill').textContent = 'SINGLE LOOP';
+  } else {
+    get('ssub').textContent      = `${qPos + 1} of ${queue.length}`;
+    get('mode-pill').textContent = looping ? 'PLAYLIST LOOP' : 'PLAYLIST';
+  }
+
+  renderQueue();
+  renderLib();
+}
+
+function playSingleFromLib(i) {
+  singleMode = true;
+  looping    = true;
+  singleIdx  = i;
+  aud.loop   = true;
+  vid.loop   = true;
+  closeLib();
+  playSong(i);
+  updateLoopBtn();
+}
+
+function togglePlay() {
+  if (!playing && !paused) {
+    // nothing loaded yet — start queue
+    if (queue.length) { playSong(queue[qPos]); }
+    return;
+  }
+  const el = activeEl();
+  if (paused) {
+    el.play().catch(()=>{});
+    playing = true; paused = false;
+    get('play-btn').textContent = '⏸';
+  } else {
+    el.pause();
+    playing = false; paused = true;
+    get('play-btn').textContent = '▶';
+  }
+}
+
+function nextSong() {
+  if (singleMode) return;
+  if (!queue.length) return;
+
+  // advance position first
+  if (qPos + 1 < queue.length) {
+    qPos++;
+  } else if (looping) {
+    qPos = 0; // loop back to start
+  } else {
+    // end of queue, stop
+    playing = false; paused = false;
+    get('play-btn').textContent = '▶';
+    return;
+  }
+
+  // every 4 songs, recycle played tracks to end (only in playlist mode)
+  recycleCount++;
+  if (recycleCount >= 4) {
+    recycleCount = 0;
+    const played = queue.splice(0, qPos);
+    for (let i = played.length-1; i > 0; i--) {
+      const j = Math.floor(Math.random()*(i+1));
+      [played[i],played[j]] = [played[j],played[i]];
+    }
+    queue.push(...played);
+    qPos = 0;
+  }
+
+  playSong(queue[qPos]);
+}
+
+function prevSong() {
+  if (singleMode) return;
+  if (!queue.length) return;
+  // if more than 3s in, restart current song instead
+  const el = activeEl();
+  if (el.currentTime > 3) {
+    el.currentTime = 0;
+    return;
+  }
+  qPos = qPos > 0 ? qPos - 1 : (looping ? queue.length - 1 : 0);
+  playSong(queue[qPos]);
+}
+
+// ── Song end handling ──
+// Single mode: native aud.loop/vid.loop handles it — no JS needed
+// Playlist mode: ended event advances or loops queue
+aud.addEventListener('ended', () => {
+  if (singleMode) return; // native loop handles it
+  if (looping || qPos + 1 < queue.length) {
+    nextSong();
+  } else {
+    playing = false; paused = false;
+    get('play-btn').textContent = '▶';
+  }
+});
+vid.addEventListener('ended', () => {
+  if (singleMode) return;
+  if (looping || qPos + 1 < queue.length) {
+    nextSong();
+  } else {
+    playing = false; paused = false;
+    get('play-btn').textContent = '▶';
+  }
+});
+
+// iOS Safari sometimes doesn't fire 'ended' reliably — poll as backup
+setInterval(() => {
+  if (!playing || paused) return;
+  const el = singleMode
+    ? (lib[singleIdx] && lib[singleIdx].isVid ? vid : aud)
+    : activeEl();
+  if (!el.duration || el.duration === Infinity) return;
+  // near end and not naturally looping
+  if (!el.loop && el.currentTime > 0 && el.currentTime >= el.duration - 0.5) {
+    if (singleMode) {
+      el.currentTime = 0;
+      el.play().catch(()=>{});
+    } else if (looping || qPos + 1 < queue.length) {
+      nextSong();
+    } else {
+      playing = false; paused = false;
+      get('play-btn').textContent = '▶';
+    }
+  }
+}, 500);
+
+function toggleLoop() {
+  looping = !looping;
+  // for single mode, always keep native loop on
+  if (singleMode) {
+    aud.loop = true;
+    vid.loop = true;
+    get('mode-pill').textContent = 'SINGLE LOOP';
+  } else {
+    // playlist mode doesn't use native loop
+    aud.loop = false;
+    vid.loop = false;
+    get('mode-pill').textContent = looping ? 'PLAYLIST LOOP' : 'PLAYLIST';
+  }
+  updateLoopBtn();
+}
+function updateLoopBtn() {
+  get('loop-btn').classList.toggle('active', looping);
+}
+
+function toggleShuffle() {
+  if (singleMode) return;
+  shuffling = !shuffling;
+  get('shuf-btn').classList.toggle('active', shuffling);
+  if (shuffling && queue.length > 1) {
+    const rem = queue.splice(qPos + 1);
+    for (let i = rem.length-1; i > 0; i--) {
+      const j = Math.floor(Math.random()*(i+1));
+      [rem[i],rem[j]] = [rem[j],rem[i]];
+    }
+    queue.push(...rem);
+    renderQueue();
+  }
+}
+
+// ══════════════════════════════════════
+// PROGRESS BAR
+// ══════════════════════════════════════
+const fmt = s => {
+  if (!s || isNaN(s) || s < 0) return '0:00';
+  return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+};
+
+function updateProgress() {
+  if (seeking) return;
+  const el = activeEl();
+  if (!el.duration) return;
+  const pct = el.currentTime / el.duration * 100;
+  get('prog-fill').style.width = pct + '%';
+  get('t-cur').textContent = fmt(el.currentTime);
+  get('t-dur').textContent = fmt(el.duration);
+}
+aud.addEventListener('timeupdate', updateProgress);
+vid.addEventListener('timeupdate', updateProgress);
+
+function seekTo(clientX) {
+  const rect = get('prog-bar-area').getBoundingClientRect();
+  const pct  = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  const el   = activeEl();
+  if (el.duration) {
+    el.currentTime = pct * el.duration;
+    get('prog-fill').style.width = (pct*100) + '%';
+  }
+}
+
+get('prog-bar-area').addEventListener('touchstart', e => { seeking = true; seekTo(e.touches[0].clientX); }, {passive:true});
+get('prog-bar-area').addEventListener('touchmove',  e => { if(seeking) seekTo(e.touches[0].clientX); }, {passive:true});
+get('prog-bar-area').addEventListener('touchend',   () => { seeking = false; });
+get('prog-bar-area').addEventListener('mousedown',  e => { seeking = true; seekTo(e.clientX); });
+document.addEventListener('mousemove', e => { if(seeking) seekTo(e.clientX); });
+document.addEventListener('mouseup',   () => { seeking = false; });
+
+// ══════════════════════════════════════
+// RENDER QUEUE
+// ══════════════════════════════════════
+function renderQueue() {
+  get('q-label').textContent = `QUEUE · ${queue.length}`;
+  const el = get('qlist');
+  if (!queue.length) {
+    el.innerHTML = '<div class="empty"><div class="eico">♫</div>queue is empty.<br>tap + folder or + files above.</div>';
+    return;
+  }
+  el.innerHTML = queue.map((li, qi) => {
+    const s = lib[li]; if (!s) return '';
+    const cur = !singleMode && qi === qPos;
+    return `<div class="qi${cur?' cur':''}" data-qi="${qi}">
+      ${cur && playing ? '<div class="qdot"></div>' : `<span class="qnum">${qi+1}</span>`}
+      <span class="qn">${s.name}</span>
+      <button class="qdel" data-del="${qi}">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// Queue interactions
+get('qlist').addEventListener('touchstart', e => {
+  e.preventDefault();
+  const delBtn = e.target.closest('[data-del]');
+  if (delBtn) {
+    const qi = +delBtn.dataset.del;
+    queue.splice(qi, 1);
+    if (qPos >= queue.length) qPos = Math.max(0, queue.length - 1);
+    renderQueue();
+    return;
+  }
+  const item = e.target.closest('[data-qi]');
+  if (!item) return;
+  const qi  = +item.dataset.qi;
+  const now = Date.now();
+  if (now - lastTap < 400 && lastTapIdx === qi) {
+    singleMode = false;
+    qPos = qi;
+    recycleCount = 0;
+    get('mode-pill').textContent = looping ? 'PLAYLIST LOOP' : 'PLAYLIST';
+    playSong(queue[qi]);
+    closeSidebar();
+  }
+  lastTap = now;
+  lastTapIdx = qi;
+}, { passive: false });
+
+// Also support mouse click for delete and dblclick for play (desktop)
+get('qlist').addEventListener('click', e => {
+  const delBtn = e.target.closest('[data-del]');
+  if (delBtn) {
+    const qi = +delBtn.dataset.del;
+    queue.splice(qi, 1);
+    if (qPos >= queue.length) qPos = Math.max(0, queue.length-1);
+    renderQueue();
+  }
+});
+get('qlist').addEventListener('dblclick', e => {
+  const item = e.target.closest('[data-qi]');
+  if (!item) return;
+  const qi = +item.dataset.qi;
+  singleMode = false;
+  qPos = qi;
+  recycleCount = 0;
+  get('mode-pill').textContent = looping ? 'PLAYLIST LOOP' : 'PLAYLIST';
+  playSong(queue[qi]);
+  closeSidebar();
+});
+
+// ══════════════════════════════════════
+// RENDER LIBRARY
+// ══════════════════════════════════════
+function renderLib() {
+  const el = get('liblist');
+  if (!lib.length) {
+    el.innerHTML = '<div class="empty"><div class="eico">♪</div>no songs yet.</div>';
+    return;
+  }
+  el.innerHTML = lib.map((s,i) => {
+    const on = singleMode && i === singleIdx;
+    return `<div class="li${on?' on':''}" data-li="${i}">
+      <div class="liico">${s.isVid?'🎬':'🎵'}</div>
+      <div class="liinfo">
+        <div class="lin">${s.name}</div>
+        <div class="limt">${s.isVid?'video':'audio'} · tap to play &amp; loop</div>
+      </div>
+      ${on ? '<div class="lbadge">looping</div>' : ''}
+    </div>`;
+  }).join('');
+}
+
+get('liblist').addEventListener('touchstart', e => {
+  e.preventDefault();
+  const item = e.target.closest('[data-li]');
+  if (item) playSingleFromLib(+item.dataset.li);
+}, { passive: false });
+get('liblist').addEventListener('click', e => {
+  const item = e.target.closest('[data-li]');
+  if (item) playSingleFromLib(+item.dataset.li);
+});
+</script>
+
+<!-- SERVICE WORKER for offline use -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    const sw = `
+      const C='player-v3';
+      self.addEventListener('install', e=>{
+        e.waitUntil(caches.open(C).then(c=>c.add(self.location.href)));
+        self.skipWaiting();
+      });
+      self.addEventListener('activate', e=>e.waitUntil(clients.claim()));
+      self.addEventListener('fetch', e=>{
+        if(e.request.url.startsWith('blob:')) return;
+        e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{
+          caches.open(C).then(c=>c.put(e.request,res.clone()));
+          return res;
+        })));
+      });
+    `;
+    const url = URL.createObjectURL(new Blob([sw],{type:'application/javascript'}));
+    navigator.serviceWorker.register(url).catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
